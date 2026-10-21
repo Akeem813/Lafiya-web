@@ -47,7 +47,9 @@
     "sbom": "node scripts/generate-sbom.mjs",
     "release:verify-gate": "node scripts/verify-release-gate.mjs",
     "db:audit-rls": "node scripts/audit-rls.mjs",
-    "db:drift": "node scripts/check-schema-drift.mjs"
+    "db:drift": "node scripts/check-schema-drift.mjs",
+    "deps:health": "node scripts/dependency-health.mjs",
+    "db:upgrade-rehearsal": "node scripts/pg-upgrade-rehearsal.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.1.0",

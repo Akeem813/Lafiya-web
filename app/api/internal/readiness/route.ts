@@ -1,6 +1,11 @@
 import { rpc } from "@stellar/stellar-sdk";
 import { NextResponse } from "next/server";
 
+import {
+  type ExtensionManifestStatus,
+  type ExtensionRow,
+  extensionManifestStatus,
+} from "@/lib/db/extension-manifest";
 import { serverEnv } from "@/lib/env-server";
 import { getRuntimeConfig } from "@/lib/runtime-config";
 import { getContractTrustState } from "@/lib/stellar/verification-indexer/trust-state";
@@ -31,6 +36,23 @@ async function checkSupabase(): Promise<DependencyStatus> {
     return error ? "unreachable" : "ok";
   } catch {
     return "unreachable";
+  }
+}
+
+/**
+ * Issue #811: verifies Postgres major and extension versions against
+ * `supabase/extensions.manifest.json`. Only the status is returned, never the
+ * installed versions, so the probe does not advertise the database fingerprint.
+ */
+async function checkExtensions(): Promise<ExtensionManifestStatus> {
+  try {
+    const { data, error } = await createAdminClient().rpc(
+      "installed_extension_versions",
+    );
+    if (error) return "unknown";
+    return extensionManifestStatus(data as ExtensionRow[]);
+  } catch {
+    return "unknown";
   }
 }
 
@@ -112,15 +134,18 @@ async function checkIndexerGap(): Promise<IndexerGapStatus> {
  */
 export async function GET() {
   const config = getRuntimeConfig();
-  const [supabase, stellar, attestationGovernance] = await Promise.all([
-    checkSupabase(),
-    checkStellar(),
-    getContractTrustState(),
-  ]);
+  const [supabase, stellar, attestationGovernance, databaseExtensions] =
+    await Promise.all([
+      checkSupabase(),
+      checkStellar(),
+      getContractTrustState(),
+      checkExtensions(),
+    ]);
 
   const ready =
     supabase === "ok" &&
     stellar === "ok" &&
+    databaseExtensions !== "mismatch" &&
     verificationIndexer !== "GAP_DETECTED";
   return NextResponse.json(
     {
@@ -133,6 +158,7 @@ export async function GET() {
       components: {
         supabase,
         stellar,
+        databaseExtensions,
         verificationIndexer,
         attestation: config.attestation.mode,
         // Issue #629: "needs_review" means an unapproved contract upgrade was
