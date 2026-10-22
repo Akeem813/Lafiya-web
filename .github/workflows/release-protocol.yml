@@ -1,0 +1,63 @@
+name: Release @lafiya/protocol
+
+on:
+  push:
+    tags:
+      - "protocol-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run — build and verify but do not publish"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write        # Required for npm provenance attestation
+
+jobs:
+  verify-and-publish:
+    name: Verify test vectors and publish
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/protocol
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+          registry-url: "https://registry.npmjs.org"
+          cache: npm
+
+      # Install workspace dependencies from the monorepo root so that
+      # libphonenumber-js and other peer dependencies are available.
+      - name: Install monorepo dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Install package-local dev dependencies
+        run: npm install --ignore-scripts
+        working-directory: packages/protocol
+
+      - name: Build package
+        run: npm run build
+
+      - name: Verify test vectors (must pass before publication)
+        run: npm run test:vectors
+
+      - name: Confirm no server-only or secret-handling imports in dist
+        run: |
+          if grep -r "server-only\|SUPABASE_SERVICE_ROLE\|createAdminClient\|process\.env\b" dist/; then
+            echo "::error::dist/ contains server-only or secret-handling code"
+            exit 1
+          fi
+          echo "dist/ is clean — no server-only or secret-handling imports found"
+
+      - name: Publish to npm (with provenance)
+        if: ${{ github.event.inputs.dry_run != 'true' && github.event_name == 'push' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

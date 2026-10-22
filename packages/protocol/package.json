@@ -1,0 +1,73 @@
+{
+  "name": "@lafiya/protocol",
+  "version": "1.0.0",
+  "description": "Shared protocol types, canonicalization, hashing, intent schemas and test vectors for the Lafiya ecosystem",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./canonicalization": {
+      "import": "./dist/canonicalization.js",
+      "require": "./dist/canonicalization.cjs",
+      "types": "./dist/canonicalization.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "require": "./dist/types.cjs",
+      "types": "./dist/types.d.ts"
+    },
+    "./schemas": {
+      "import": "./dist/schemas.js",
+      "require": "./dist/schemas.cjs",
+      "types": "./dist/schemas.d.ts"
+    },
+    "./test-vectors": {
+      "import": "./dist/test-vectors.js",
+      "require": "./dist/test-vectors.cjs",
+      "types": "./dist/test-vectors.d.ts"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:vectors": "vitest run test-vectors.test.ts",
+    "prepublishOnly": "npm run build && npm run test:vectors"
+  },
+  "dependencies": {
+    "libphonenumber-js": "1.11.19"
+  },
+  "devDependencies": {
+    "tsup": "8.5.0",
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/org/lafiya-web",
+    "directory": "packages/protocol"
+  },
+  "keywords": [
+    "lafiya",
+    "protocol",
+    "health",
+    "attestation",
+    "canonicalization"
+  ]
+}
