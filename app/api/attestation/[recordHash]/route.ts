@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 
 import { getAttestation } from "@/lib/stellar/attestation";
 import { checkRateLimit, getClientIp, recordFailure } from "@/lib/rate-limit";
+import {
+  SANDBOX_HEADER,
+  buildSandboxWebhook,
+  checkSandboxRateLimit,
+  getSandboxFixture,
+  resolveSandboxAuth,
+} from "@/lib/sandbox";
 
 import { logError, logInfo } from "@/lib/logging/logger";
 
@@ -61,9 +68,13 @@ function logLookupCompleted(
  * getAttestation returns a LedgerPinnedResult so the observed Soroban
  * ledger (and the RPC host that served it) is surfaced to consumers,
  * letting them reason about freshness and cross-check against indexers.
+ *
+ * --- Partner sandbox (issue-786) ---
+ * A sandbox bearer key short-circuits to synthetic fixtures (lib/sandbox)
+ * before any production dependency is touched, with its own rate limit.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ recordHash: string }> },
 ) {
   const startedAt = Date.now();
@@ -74,6 +85,34 @@ export async function GET(
     return NextResponse.json(
       { error: "recordHash must be a 64-character hex SHA-256 digest" },
       { status: 400 },
+    );
+  }
+
+  const sandbox = resolveSandboxAuth(request);
+  if (sandbox.mode === "invalid") {
+    return NextResponse.json({ error: "Invalid sandbox API key" }, { status: 401 });
+  }
+  if (sandbox.mode === "sandbox") {
+    const sandboxHeaders = { [SANDBOX_HEADER]: "true" };
+    const limit = checkSandboxRateLimit(sandbox.keyId);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { sandbox: true, error: "Too many requests. Please try again later.", secondsRemaining: limit.secondsRemaining },
+        { status: 429, headers: sandboxHeaders },
+      );
+    }
+    const fixture = getSandboxFixture(recordHash);
+    return NextResponse.json(
+      {
+        sandbox: true,
+        verified: fixture?.verified ?? false,
+        state: fixture?.state ?? null,
+        attestation: fixture?.attestation ?? null,
+        ledger: null,
+        rpcHost: null,
+        simulatedWebhook: buildSandboxWebhook(recordHash),
+      },
+      { headers: sandboxHeaders },
     );
   }
 

@@ -117,6 +117,7 @@ export async function GET() {
     checkStellar(),
     getContractTrustState(),
   ]);
+  const flags = await getFlagStates();
 
   const ready =
     supabase === "ok" &&
