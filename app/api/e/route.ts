@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
+import { BoundedMap } from "@/lib/bounded-map";
 
 /**
  * First-party, cookieless product analytics ingestion endpoint.
@@ -28,7 +29,11 @@ const MAX_BODY_BYTES = 2048;
 // Simple in-memory rate limiter: max requests per window per daily hash.
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 60;
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+// Bounded so high IP cardinality cannot grow it for the instance lifetime.
+const RATE_BUCKETS_MAX = 10_000;
+const rateBuckets = new BoundedMap<string, { count: number; resetAt: number }>(
+  RATE_BUCKETS_MAX,
+);
 
 // Daily-rotating salt. Regenerated each UTC day so hashes cannot be linked
 // across days. Kept in memory only; never persisted or logged.

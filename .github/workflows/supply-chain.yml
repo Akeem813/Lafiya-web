@@ -29,6 +29,11 @@ jobs:
         with:
           path: ./
           extra_args: --only-verified
+      - name: Gate scanner findings against VEX
+        run: |
+          mkdir -p artifacts
+          npm audit --omit=dev --json > artifacts/npm-audit.json || true
+          npm run vex:gate
       - run: npm run sbom
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -37,5 +42,8 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: lafiya-web-sbom
-          path: artifacts/lafiya-web.sbom.cdx.json
+          path: |
+            artifacts/lafiya-web.sbom.cdx.json
+            artifacts/lafiya-web.vex.openvex.json
+            artifacts/npm-audit.json
           retention-days: 30
