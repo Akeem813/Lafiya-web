@@ -8,6 +8,8 @@ Copy `.env.example` to `.env.local` and fill in the values. Variables marked **R
 
 ## Quick local setup
 
+<!-- doctest -->
+
 ```bash
 npx supabase start    # prints ANON_KEY, SERVICE_ROLE_KEY, and API_URL
 cp .env.example .env.local
@@ -156,6 +158,8 @@ returns HTTP 501 if any variable for that platform is missing.
 ---
 
 ## Minimum `.env.local` for local UI development
+
+<!-- doctest -->
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321

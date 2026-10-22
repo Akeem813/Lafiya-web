@@ -5,6 +5,8 @@ signed CSV/JSON reports of verified registrations and payouts per region.
 
 ## Schema (version 1)
 
+<!-- doctest -->
+
 ```json
 {
   "schemaVersion": 1,

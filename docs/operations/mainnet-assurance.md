@@ -10,6 +10,8 @@ named owner approval recorded in the release evidence bundle.
 The supported toolchain is Node `24.14.0` and npm `11.9.0` (pinned in
 `.nvmrc` and `package.json`). The canonical clean-checkout sequence is:
 
+<!-- doctest -->
+
 ```bash
 npm ci
 npm run lint
