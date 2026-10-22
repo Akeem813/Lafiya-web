@@ -17,6 +17,7 @@
     "postbuild": "npm run check:client-bundles && npm run sw:manifest",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
+    "tokens:check": "node scripts/verify-tokens-contrast.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p sw/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
