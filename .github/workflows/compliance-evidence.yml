@@ -1,0 +1,82 @@
+name: Compliance evidence collection
+
+on:
+  schedule:
+    # Collect evidence every Monday at 08:00 UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+    inputs:
+      period:
+        description: "Evidence period label (e.g. 2026-Q4). Defaults to current ISO month."
+        required: false
+        type: string
+
+permissions:
+  contents: write    # To commit the evidence bundle
+  id-token: write    # For OIDC / attestation if enabled
+  actions: read      # To read workflow run results
+
+jobs:
+  collect:
+    name: Collect and sign compliance evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect compliance evidence
+        env:
+          COMPLIANCE_EVIDENCE_SIGNING_KEY: ${{ secrets.COMPLIANCE_EVIDENCE_SIGNING_KEY }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+        run: |
+          PERIOD="${{ inputs.period }}"
+          if [ -z "$PERIOD" ]; then
+            PERIOD="$(date -u +%Y-%m)"
+          fi
+          node scripts/collect-compliance-evidence.mjs \
+            --period "$PERIOD" \
+            --output compliance-evidence/
+
+      - name: Verify bundle completeness and PHI-free
+        env:
+          COMPLIANCE_EVIDENCE_SIGNING_KEY: ${{ secrets.COMPLIANCE_EVIDENCE_SIGNING_KEY }}
+        run: |
+          BUNDLE=$(ls compliance-evidence/compliance-index-*.json | tail -1)
+          SIG=$(ls compliance-evidence/compliance-index-*.sig 2>/dev/null | tail -1 || true)
+          if [ -n "$SIG" ]; then
+            node scripts/verify-compliance-bundle.mjs "$BUNDLE" "$SIG"
+          else
+            node scripts/verify-compliance-bundle.mjs "$BUNDLE"
+          fi
+
+      - name: Upload evidence bundle as artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: compliance-evidence-${{ github.run_id }}
+          path: compliance-evidence/
+          retention-days: 365
+
+      # Commit the bundle to the repository so it is retained with the code
+      # and auditors can inspect it without needing workflow artifact access.
+      - name: Commit evidence bundle
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add compliance-evidence/
+          if git diff --cached --quiet; then
+            echo "No new evidence to commit."
+          else
+            git commit -m "chore: add compliance evidence bundle $(date -u +%Y-%m-%dT%H:%M:%SZ) [ci skip]"
+            git push
+          fi
