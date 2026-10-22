@@ -47,7 +47,8 @@
     "sbom": "node scripts/generate-sbom.mjs",
     "release:verify-gate": "node scripts/verify-release-gate.mjs",
     "db:audit-rls": "node scripts/audit-rls.mjs",
-    "db:drift": "node scripts/check-schema-drift.mjs"
+    "db:drift": "node scripts/check-schema-drift.mjs",
+    "db:deletion-policy": "node scripts/check-account-deletion-policy.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.1.0",
