@@ -186,7 +186,7 @@ const badgeBase =
 
 // In forced-colors mode the OS replaces our colours, so we lean on system colour
 // keywords and a visible border to keep each state distinguishable.
-const verifiedClasses = `${badgeBase} border-emerald-700 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-600 dark:text-white forced-colors:border-[CanvasText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]`;
+const verifiedClasses = `${badgeBase} verified-badge border-emerald-700 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-600 dark:text-white forced-colors:border-[CanvasText] forced-colors:bg-[Highlight] forced-colors:text-[HighlightText]`;
 const pendingClasses = `${badgeBase} border-amber-700 bg-amber-600 text-white dark:border-amber-500 dark:bg-amber-600 dark:text-white forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]`;
 const neutralClasses = `${badgeBase} border-zinc-600 bg-zinc-500 text-white dark:border-zinc-400 dark:bg-zinc-600 dark:text-white forced-colors:border-[CanvasText] forced-colors:bg-[Canvas] forced-colors:text-[CanvasText]`;
 

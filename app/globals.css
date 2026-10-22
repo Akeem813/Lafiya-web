@@ -3,11 +3,55 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Semantic Token CSS Custom Properties */
+  --color-surface-primary: #FFFFFF;
+  --color-surface-secondary: #F8FAFC;
+  --color-surface-muted: #F1F5F9;
+  --color-surface-inverse: #0F172A;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748B;
+  --color-text-inverse: #FFFFFF;
+  --color-danger-base: #DC2626;
+  --color-danger-surface: #FEF2F2;
+  --color-danger-text: #991B1B;
+  --color-danger-border: #F87171;
+  --color-verified-base: #059669;
+  --color-verified-surface: #ECFDF5;
+  --color-verified-text: #065F46;
+  --color-verified-border: #34D399;
+  --color-warning-base: #D97706;
+  --color-warning-surface: #FFFBEB;
+  --color-warning-text: #92400E;
+  --color-warning-border: #FBBF24;
 }
 
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+
+  /* Dark theme semantic token overrides */
+  --color-surface-primary: #0B1120;
+  --color-surface-secondary: #111827;
+  --color-surface-muted: #1F2937;
+  --color-surface-inverse: #F9FAFB;
+  --color-text-primary: #F9FAFB;
+  --color-text-secondary: #D1D5DB;
+  --color-text-muted: #9CA3AF;
+  --color-text-inverse: #111827;
+  --color-danger-base: #EF4444;
+  --color-danger-surface: #450A0A;
+  --color-danger-text: #FCA5A5;
+  --color-danger-border: #B91C1C;
+  --color-verified-base: #10B981;
+  --color-verified-surface: #064E3B;
+  --color-verified-text: #6EE7B7;
+  --color-verified-border: #047857;
+  --color-warning-base: #F59E0B;
+  --color-warning-surface: #451A03;
+  --color-warning-text: #FCD34D;
+  --color-warning-border: #B45309;
 }
 
 @theme inline {
@@ -126,3 +170,23 @@ body {
     border: 1px solid Highlight;
   }
 }
+
+/* Component semantic token migrations */
+.verified-badge {
+  background-color: var(--color-verified-surface);
+  color: var(--color-verified-text);
+  border: 1px solid var(--color-verified-border);
+}
+
+.critical-fields-banner {
+  background-color: var(--color-danger-surface);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-border);
+}
+
+.form-error {
+  color: var(--color-danger-text);
+  background-color: var(--color-danger-surface);
+  border-left: 3px solid var(--color-danger-base);
+}
+
