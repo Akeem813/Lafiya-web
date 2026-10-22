@@ -11,6 +11,14 @@ on:
         description: "sha256 digest of the release artefact to verify provenance for"
         required: true
         type: string
+      probes_path:
+        description: "Repository path to synthetic probe results JSON (optional — skips budget gate if omitted)"
+        required: false
+        type: string
+      override_reason:
+        description: "Required when deploying with an exhausted or page-alert budget. Must be non-empty to skip the budget gate."
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -30,7 +38,52 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: node scripts/verify-release-gate.mjs "${{ inputs.evidence_path }}"
+
+      # ── Error budget gate ────────────────────────────────────────────────────
+      # Compute rolling burn-rate from synthetic probe results and block the
+      # release if the budget is exhausted or a page-severity burn rate is
+      # active, unless an explicit override reason is supplied.
+      - name: Compute error budget
+        id: budget
+        if: ${{ inputs.probes_path != '' }}
+        run: |
+          set +e
+          node scripts/compute-error-budget.mjs \
+            --probes "${{ inputs.probes_path }}" \
+            --output /tmp/budget-report.json
+          BUDGET_EXIT=$?
+          echo "exit_code=$BUDGET_EXIT" >> "$GITHUB_OUTPUT"
+          # Always surface the report in the step summary
+          if [ -f /tmp/budget-report.json ]; then
+            REMAINING=$(node -e "const r=require('/tmp/budget-report.json');process.stdout.write(String(Math.round(r.budget.remainingFraction*1000)/10)+'%')")
+            SEVERITY=$(node -e "const r=require('/tmp/budget-report.json');process.stdout.write(r.alert.severity)")
+            echo "remaining_pct=$REMAINING" >> "$GITHUB_OUTPUT"
+            echo "alert_severity=$SEVERITY" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0  # defer the blocking decision to the next step
+
+      - name: Block or override budget gate
+        if: ${{ inputs.probes_path != '' && steps.budget.outputs.exit_code != '0' }}
+        env:
+          OVERRIDE_REASON: ${{ inputs.override_reason }}
+          LAFIYA_DEPLOYMENT_ENV: mainnet
+        run: |
+          if [ -z "$OVERRIDE_REASON" ]; then
+            echo "::error::Error budget gate blocked. Provide 'override_reason' to deploy despite budget state."
+            echo "::error::Budget remaining: ${{ steps.budget.outputs.remaining_pct }}, Alert: ${{ steps.budget.outputs.alert_severity }}"
+            exit 1
+          fi
+          # Record the audited override before continuing
+          node scripts/record-budget-override.mjs \
+            --reason "$OVERRIDE_REASON" \
+            --actor  "${{ github.actor }}" \
+            --type   "urgent"
+          echo "::warning::Budget gate overridden by ${{ github.actor }}: $OVERRIDE_REASON"
+
+      # ── Release evidence gate ────────────────────────────────────────────────
+      - name: Verify release evidence
+        run: node scripts/verify-release-gate.mjs "${{ inputs.evidence_path }}"
+
       # Verify the signed SLSA build provenance for the artefact before any
       # promotion. A missing or mismatched attestation fails the gate.
       - name: Verify build provenance
@@ -43,5 +96,6 @@ jobs:
             --source-digest "${{ github.sha }}" \
             --predicate-type "https://slsa.dev/provenance/v1"
           echo "${{ inputs.artifact_digest }}" | grep -Eq '^sha256:[0-9a-f]{64}$'
+
       # A deployment step is intentionally absent until operators configure the
       # protected environment, managed credentials, and approved promotion target.
