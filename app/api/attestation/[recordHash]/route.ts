@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 
 import { getAttestation } from "@/lib/stellar/attestation";
 import { checkRateLimit, getClientIp, recordFailure } from "@/lib/rate-limit";
+import {
+  authenticatePartnerKey,
+  consumePartnerQuota,
+  recordPartnerUsage,
+} from "@/lib/security/partner-keys";
 
 import { logError, logInfo } from "@/lib/logging/logger";
 
 const RECORD_HASH_PATTERN = /^[0-9a-f]{64}$/i;
 const ROUTE_CLASS = "attestation_lookup";
+const ENDPOINT_TEMPLATE = "/api/attestation/[recordHash]";
+const PARTNER_SCOPE = "attestation:read";
 
 type AttestationLookupOutcome =
   "invalid_request" | "rate_limited" | "verified" | "not_found" | "error";
@@ -63,8 +70,36 @@ function logLookupCompleted(
  * letting them reason about freshness and cross-check against indexers.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
+  context: { params: Promise<{ recordHash: string }> },
+) {
+  // Issue #809: requests carrying a partner key are metered per key and
+  // enforced against that key's quotas instead of the anonymous IP limiter.
+  if (!request.headers.get("authorization")) {
+    return lookup(context);
+  }
+  const key = await authenticatePartnerKey(request);
+  if (!key) {
+    return NextResponse.json({ error: "invalid or expired API key" }, { status: 401 });
+  }
+  if (!key.scopes.includes(PARTNER_SCOPE)) {
+    await recordPartnerUsage(key.id, ENDPOINT_TEMPLATE, 403);
+    return NextResponse.json({ error: `API key lacks scope ${PARTNER_SCOPE}` }, { status: 403 });
+  }
+  const quota = await consumePartnerQuota(key);
+  const response = quota.allowed
+    ? await lookup(context, { skipIpLimit: true })
+    : NextResponse.json({ error: "Partner quota exceeded." }, { status: 429 });
+  for (const [name, value] of Object.entries(quota.headers)) {
+    response.headers.set(name, value);
+  }
+  await recordPartnerUsage(key.id, ENDPOINT_TEMPLATE, response.status);
+  return response;
+}
+
+async function lookup(
   { params }: { params: Promise<{ recordHash: string }> },
+  { skipIpLimit = false }: { skipIpLimit?: boolean } = {},
 ) {
   const startedAt = Date.now();
   const { recordHash } = await params;
@@ -78,10 +113,12 @@ export async function GET(
   }
 
   try {
-    const ip = await getClientIp();
+    const ip = skipIpLimit ? null : await getClientIp();
     const rateLimitKey = `attestation-lookup:${ip}`;
 
-    const limitCheck = await checkRateLimit(rateLimitKey);
+    const limitCheck = ip
+      ? await checkRateLimit(rateLimitKey)
+      : { allowed: true, secondsRemaining: 0 };
     if (!limitCheck.allowed) {
       logLookupCompleted("rate_limited", startedAt);
       return NextResponse.json(
@@ -93,7 +130,7 @@ export async function GET(
       );
     }
 
-    await recordFailure(rateLimitKey);
+    if (ip) await recordFailure(rateLimitKey);
 
     const pinned = await getAttestation(recordHash);
     const attestation = pinned?.value ?? null;
