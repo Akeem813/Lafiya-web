@@ -22,6 +22,7 @@ import { AttestationStatusBanner } from "./attestation-status-banner";
 import { AccessSummary } from "./access-summary";
 import { CapabilitySharePanel } from "./capability-share-panel";
 import { DeleteAccountButton } from "./delete-account-button";
+import { EmailChangePanel } from "./email-change-panel";
 import { MfaEnrollment } from "./mfa-enrollment";
 import { MissingSecretBanner } from "./missing-secret-banner";
 import { LastChangeNotice, type RevisionSnapshot } from "./last-change-notice";
@@ -29,6 +30,9 @@ import { ProfileForm } from "./profile-form";
 import { PrivacyControls } from "./privacy-controls";
 import { QrCardDisplay } from "./qr-card-display";
 import { SessionsPanel, type SessionListItem } from "./sessions-panel";
+import { NotificationPreferencesPanel } from "./notification-preferences-panel";
+import { fromRow as preferencesFromRow } from "@/lib/notifications/preferences";
+import { isEmailUnreachable } from "@/lib/notifications";
 
 export const metadata: Metadata = {
   title: "Your Profile · Lafiya",
@@ -168,6 +172,15 @@ async function ProfileContent() {
   const { stale, pendingRequestExists, secretMissing } = profile
     ? await checkAttestationStaleness(supabase, profile)
     : { stale: false, pendingRequestExists: false, secretMissing: false };
+  const { data: notificationPrefsRow } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from("notification_preferences" as any)
+    .select("timezone, quiet_start, quiet_end, channels, batch_low_priority")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const emailUnreachable = user.email
+    ? await isEmailUnreachable(user.email).catch(() => false)
+    : false;
   const { data: consentEvents } = await supabase
     .from("consent_events")
     .select("*")
@@ -309,7 +322,18 @@ async function ProfileContent() {
   );
 }
 
-      <SessionsPanel sessions={sessions} />
+      <div id="security-sessions">
+        <SessionsPanel sessions={sessions} />
+      </div>
+
+      <hr className="border-zinc-200 dark:border-zinc-800" />
+
+      <NotificationPreferencesPanel
+        preferences={preferencesFromRow(
+          notificationPrefsRow as Parameters<typeof preferencesFromRow>[0],
+        )}
+        emailUnreachable={emailUnreachable}
+      />
 
       <hr className="border-zinc-200 dark:border-zinc-800" />
 
@@ -317,7 +341,20 @@ async function ProfileContent() {
         <h2 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Security
         </h2>
+        <Link
+          href="/profile/security"
+          className="text-sm text-zinc-700 underline dark:text-zinc-300"
+        >
+          Open security center
+        </Link>
         <MfaEnrollment />
+      </div>
+
+      <div id="security-email">
+        <EmailChangePanel
+          currentEmail={user.email ?? ""}
+          hasPendingChange={Boolean(user.new_email)}
+        />
       </div>
 
       <PrivacyControls consentEvents={consentEvents ?? []} />
