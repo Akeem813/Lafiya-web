@@ -17,6 +17,7 @@
     "postbuild": "npm run check:client-bundles && npm run sw:manifest",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
+    "tokens:check": "node scripts/verify-tokens-contrast.mjs",
     "typecheck": "tsc --noEmit && tsc --noEmit -p sw/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -30,6 +31,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test-storybook": "test-storybook --url http://127.0.0.1:6006",
+    "tokens:check": "node scripts/verify-tokens-contrast.mjs",
     "check:links": "node scripts/check-doc-links.mjs",
     "check:adrs": "node scripts/check-adr-template.mjs",
     "bundle:check": "node scripts/check-bundle-size.mjs",
@@ -47,7 +49,9 @@
     "sbom": "node scripts/generate-sbom.mjs",
     "release:verify-gate": "node scripts/verify-release-gate.mjs",
     "db:audit-rls": "node scripts/audit-rls.mjs",
-    "db:drift": "node scripts/check-schema-drift.mjs"
+    "db:drift": "node scripts/check-schema-drift.mjs",
+    "deps:health": "node scripts/dependency-health.mjs",
+    "db:upgrade-rehearsal": "node scripts/pg-upgrade-rehearsal.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.1.0",

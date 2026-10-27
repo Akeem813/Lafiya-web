@@ -9,6 +9,24 @@
  */
 
 @media print {
+  /* Semantic Design Tokens (Print Theme) */
+  :root {
+    --color-surface: #ffffff;
+    --color-surface-card: #ffffff;
+    --color-surface-muted: #ffffff;
+    --color-text: #000000;
+    --color-text-muted: #333333;
+    --color-text-inverse: #ffffff;
+    --color-danger-bg: #ffffff;
+    --color-danger-text: #000000;
+    --color-danger-border: #000000;
+    --color-verified-bg: #ffffff;
+    --color-verified-text: #000000;
+    --color-verified-border: #000000;
+    --color-warning-bg: #ffffff;
+    --color-warning-text: #000000;
+    --color-warning-border: #000000;
+  }
   /* ─── Reset browser print margins, ensure white page ──────────────────── */
   @page {
     margin: 16mm 14mm;
