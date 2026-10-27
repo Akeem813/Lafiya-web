@@ -33,6 +33,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError, logInfo, logWarn } from "@/lib/logging/logger";
 import { invalidateAttestationCache } from "@/lib/stellar/attestation-cache-invalidation";
+import { parseInboxPayload } from "@/lib/notifications/inbox";
 import type { OutboxHandler, OutboxHandlerRegistry, OutboxRow } from "./types";
 import { upcastPayload, validateOutboxPayload } from "./types";
 
@@ -74,8 +75,31 @@ const handleRecordSaved: OutboxHandler = async (row) => {
  *
  * Key format: `${aggregate}:${event_type}`
  */
+/**
+ * Persists a PHI-free inbox notification (issue #764). Idempotent per
+ * event_key: record_user_notification ignores duplicates on retry.
+ */
+const handleUserNotification: OutboxHandler = async (row) => {
+  const payload = parseInboxPayload(row.payload);
+  if (!payload) {
+    logWarn("outbox: user_notification payload invalid — skipping", {
+      outbox_id: row.id,
+    });
+    return;
+  }
+  const admin = createAdminClient();
+  const { error } = await (admin as any).rpc("record_user_notification", {
+    p_card_public_id: payload.card_public_id,
+    p_type: payload.type,
+    p_body_key: payload.body_key,
+    p_event_key: payload.event_key,
+  });
+  if (error) throw error;
+};
+
 export const HANDLERS: OutboxHandlerRegistry = new Map<string, OutboxHandler>([
   ["record_revision:record_saved", handleRecordSaved],
+  ["user_notification:security_event", handleUserNotification],
 ]);
 
 // ─── Dispatcher core ────────────────────────────────────────────────────────

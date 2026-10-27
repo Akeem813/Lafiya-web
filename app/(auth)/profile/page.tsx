@@ -20,6 +20,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SignOutButton } from "../signout/sign-out-button";
 import { AttestationStatusBanner } from "./attestation-status-banner";
 import { AccessSummary } from "./access-summary";
+import { NotificationInbox } from "./notification-inbox";
+import { VerificationVisitPanel } from "./verification-visit-panel";
+import type { VisitRequest } from "@/lib/chw-protocol/visit-requests";
+import type { InboxNotification } from "@/lib/notifications/inbox";
 import { CapabilitySharePanel } from "./capability-share-panel";
 import { DeleteAccountButton } from "./delete-account-button";
 import { EmailChangePanel } from "./email-change-panel";
@@ -163,6 +167,21 @@ async function ProfileContent() {
     return null;
   }
 
+  const { data: notifications } = await (supabase as any)
+    .from("user_notifications")
+    .select("id, type, body_key, created_at, read_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  const { data: visitRequest } = await (supabase as any)
+    .from("verification_requests")
+    .select(
+      "id, status, lga, preferred_language, contact_preference, contact_consent, contact_phone, matched_chw_id, created_at, updated_at",
+    )
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
@@ -291,6 +310,15 @@ async function ProfileContent() {
           }
         />
       ) : null}
+
+      <VerificationVisitPanel
+        request={(visitRequest as VisitRequest | null) ?? null}
+      />
+
+      <NotificationInbox
+        userId={user.id}
+        initial={(notifications as InboxNotification[] | null) ?? []}
+      />
 
       <AccessSummary
         viewsLast30Days={accessSummary?.[0]?.views_last_30_days ?? 0}
