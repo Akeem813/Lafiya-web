@@ -12,6 +12,9 @@ export const ADMIN_PURPOSES = [
   "rate-limit",
   "frequency-limit",
   "card-token",
+  "fx-rates",
+  "audit-explorer",
+  "partner-api",
 ] as const;
 
 export type AdminPurpose = (typeof ADMIN_PURPOSES)[number];

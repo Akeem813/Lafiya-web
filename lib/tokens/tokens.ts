@@ -1,64 +1,78 @@
-import tokensData from './tokens.json';
+/**
+ * @file Design Tokens Source of Truth
+ *
+ * Defines semantic color tokens across all supported themes:
+ * - light
+ * - dark
+ * - high-contrast (Windows High Contrast / forced-colors)
+ * - print
+ *
+ * Every foreground/background pairing documented here is verified against
+ * WCAG 2.2 AA (contrast ratio >= 4.5:1 for normal text, >= 3.0:1 for large/UI)
+ * and APCA standards via `scripts/verify-tokens-contrast.mjs`.
+ */
 
-export type ThemeName = 'light' | 'dark' | 'high-contrast' | 'print';
+import tokensData from "./tokens.json";
 
-export interface SemanticTokenGroup {
+export interface ColorTokenValue {
+  hex: string;
+  description: string;
+}
+
+export interface ThemeTokens {
   surface: {
-    primary: string;
-    secondary: string;
-    muted: string;
-    inverse: string;
+    background: ColorTokenValue;
+    card: ColorTokenValue;
+    muted: ColorTokenValue;
   };
   text: {
-    primary: string;
-    secondary: string;
-    muted: string;
-    inverse: string;
+    primary: ColorTokenValue;
+    muted: ColorTokenValue;
+    inverse: ColorTokenValue;
   };
   danger: {
-    base: string;
-    surface: string;
-    text: string;
-    border: string;
+    bg: ColorTokenValue;
+    text: ColorTokenValue;
+    border: ColorTokenValue;
   };
   verified: {
-    base: string;
-    surface: string;
-    text: string;
-    border: string;
+    bg: ColorTokenValue;
+    text: ColorTokenValue;
+    border: ColorTokenValue;
   };
   warning: {
-    base: string;
-    surface: string;
-    text: string;
-    border: string;
+    bg: ColorTokenValue;
+    text: ColorTokenValue;
+    border: ColorTokenValue;
   };
 }
 
-export const semanticTokens: Record<ThemeName, SemanticTokenGroup> = tokensData.themes;
+export type ThemeName = "light" | "dark" | "high-contrast" | "print";
 
-export function getCssVariablesForTheme(theme: ThemeName): Record<string, string> {
-  const t = semanticTokens[theme];
-  return {
-    '--color-surface-primary': t.surface.primary,
-    '--color-surface-secondary': t.surface.secondary,
-    '--color-surface-muted': t.surface.muted,
-    '--color-surface-inverse': t.surface.inverse,
-    '--color-text-primary': t.text.primary,
-    '--color-text-secondary': t.text.secondary,
-    '--color-text-muted': t.text.muted,
-    '--color-text-inverse': t.text.inverse,
-    '--color-danger-base': t.danger.base,
-    '--color-danger-surface': t.danger.surface,
-    '--color-danger-text': t.danger.text,
-    '--color-danger-border': t.danger.border,
-    '--color-verified-base': t.verified.base,
-    '--color-verified-surface': t.verified.surface,
-    '--color-verified-text': t.verified.text,
-    '--color-verified-border': t.verified.border,
-    '--color-warning-base': t.warning.base,
-    '--color-warning-surface': t.warning.surface,
-    '--color-warning-text': t.warning.text,
-    '--color-warning-border': t.warning.border,
-  };
+export const tokens = tokensData.themes as Record<ThemeName, ThemeTokens>;
+
+export interface TokenPairing {
+  id: string;
+  name: string;
+  usage: string;
+  fgToken: string;
+  bgToken: string;
+  minRatio: number;
+  getFg: (t: ThemeTokens) => string;
+  getBg: (t: ThemeTokens) => string;
 }
+
+function resolveToken(tokens: ThemeTokens, path: string): string {
+  const parts = path.split(".");
+  let cur: unknown = tokens;
+  for (const p of parts) {
+    cur = (cur as Record<string, unknown>)[p];
+  }
+  return (cur as ColorTokenValue).hex;
+}
+
+export const documentedPairings: TokenPairing[] = tokensData.pairings.map((p) => ({
+  ...p,
+  getFg: (t: ThemeTokens) => resolveToken(t, p.fgToken),
+  getBg: (t: ThemeTokens) => resolveToken(t, p.bgToken),
+}));
