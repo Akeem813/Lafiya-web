@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
+import { BoundedMap } from "@/lib/bounded-map";
 
 import { gcraConsume, limiterHeaders } from "@/lib/gcra-limit";
 
