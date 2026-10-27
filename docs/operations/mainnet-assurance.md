@@ -94,6 +94,13 @@ returns a database URL, credentials, contract/address, key, capability,
 record identifier, or patient-derived value. A database failure yields `503`;
 process liveness is not readiness.
 
+Readiness also verifies the Postgres major and extension versions against
+`supabase/extensions.manifest.json` (`components.databaseExtensions`); a
+mismatch yields `503`. Upgrades follow the
+[Postgres upgrade rehearsal runbook](postgres-upgrade-rehearsal.md).
+Dependency and repository health (OpenSSF Scorecard, new-dependency gates) is
+described in [Dependency and repository health](dependency-health.md).
+
 ## Environment topology and promotion
 
 | Environment        | Isolation requirement                                                                        | Network                                               | Promotion requirements                                 |
