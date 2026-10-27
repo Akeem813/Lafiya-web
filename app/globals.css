@@ -208,3 +208,23 @@ body {
     border: 1px solid Highlight;
   }
 }
+
+/* Component semantic token migrations */
+.verified-badge {
+  background-color: var(--color-verified-surface);
+  color: var(--color-verified-text);
+  border: 1px solid var(--color-verified-border);
+}
+
+.critical-fields-banner {
+  background-color: var(--color-danger-surface);
+  color: var(--color-danger-text);
+  border: 1px solid var(--color-danger-border);
+}
+
+.form-error {
+  color: var(--color-danger-text);
+  background-color: var(--color-danger-surface);
+  border-left: 3px solid var(--color-danger-base);
+}
+
