@@ -11,6 +11,7 @@ import { getRuntimeConfig } from "@/lib/runtime-config";
 import { getContractTrustState } from "@/lib/stellar/verification-indexer/trust-state";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getFlagStates } from "@/lib/flags";
+import { smsDeliveryMetrics } from "@/lib/notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,13 +135,15 @@ async function checkIndexerGap(): Promise<IndexerGapStatus> {
  */
 export async function GET() {
   const config = getRuntimeConfig();
-  const [supabase, stellar, attestationGovernance, databaseExtensions] =
-    await Promise.all([
-      checkSupabase(),
-      checkStellar(),
-      getContractTrustState(),
-      checkExtensions(),
-    ]);
+  const [supabase, stellar, attestationGovernance, smsDelivery] = await Promise.all([
+    checkSupabase(),
+    checkStellar(),
+    getContractTrustState(),
+    // Issue #805: per-network (MTN/Airtel/Glo/9mobile) success rates.
+    // Aggregates only — no numbers or message ids. Informational; never
+    // fails readiness.
+    smsDeliveryMetrics().catch(() => null),
+  ]);
 
   const ready =
     supabase === "ok" &&
@@ -165,6 +168,7 @@ export async function GET() {
         // observed and verified badges are degraded. Cards remain readable,
         // so this is surfaced to operators without failing readiness.
         attestationGovernance,
+        smsDelivery: smsDelivery ?? "unknown",
         payoutIndexer: config.payoutIndexer.enabled ? "enabled" : "disabled",
         sentry: config.sentry.enabled ? "enabled" : "disabled",
         // Validation results for SOROBAN_RPC_URL / STELLAR_HORIZON_URL --

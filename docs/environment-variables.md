@@ -168,3 +168,10 @@ ATTESTATION_MODE=mock
 SENTRY_ENABLED=false
 PAYOUT_INDEXER_ENABLED=false
 ```
+
+## `ADMIN_API_ROLE`
+
+Role assigned to the placeholder `ADMIN_API_TOKEN` admin session
+(`auditor`, `support` or `analyst`). Drives audit-explorer redaction
+(issue #808). Unset or unknown values fall back to `analyst`, the most
+restrictive role.
