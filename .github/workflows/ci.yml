@@ -24,9 +24,14 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm run tokens:check
+
       - run: npm run typecheck
 
       - run: npm test
+
+      - name: Verify design token contrast across themes
+        run: npm run tokens:check
 
   database-security:
     name: Database schema drift and RLS gates
