@@ -30,6 +30,9 @@ jobs:
 
       - run: npm test
 
+      - name: Verify design token contrast across themes
+        run: npm run tokens:check
+
   database-security:
     name: Database schema drift and RLS gates
     runs-on: ubuntu-latest
