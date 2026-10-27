@@ -144,6 +144,7 @@ export async function GET() {
     // fails readiness.
     smsDeliveryMetrics().catch(() => null),
   ]);
+  const flags = await getFlagStates();
 
   const ready =
     supabase === "ok" &&
