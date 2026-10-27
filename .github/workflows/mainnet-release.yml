@@ -31,42 +31,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/verify-release-gate.mjs "${{ inputs.evidence_path }}"
-      # Surface error-budget status in the release job summary
-      - name: Surface error-budget status
-        if: always()
+      # A new critical CVE without a VEX entry (or an assessed CVE past its
+      # SLA) blocks the release; the validated VEX ships with the SBOM.
+      - name: Gate scanner findings against VEX
         run: |
-          METRICS="release-evidence/error-budget-metrics.json"
-          if [ -f "$METRICS" ]; then
-            node -e "
-              import('./scripts/error-budget.mjs').then(({ evaluateErrorBudget }) => {
-                const fs = require('fs');
-                const m = JSON.parse(fs.readFileSync('$METRICS', 'utf8'));
-                const r = evaluateErrorBudget(m);
-                const pct = (r.remainingFraction * 100).toFixed(1);
-                const emoji = r.gateStatus === 'open' ? '✅' : r.gateStatus === 'warn' ? '⚠️' : '🚫';
-                const summary = [
-                  '## Error-budget status',
-                  '',
-                  \`| Metric | Value |\`,
-                  \`| --- | --- |\`,
-                  \`| SLO target | \${(r.sloTarget*100).toFixed(2)}% |\`,
-                  \`| Budget total | \${r.errorBudgetMinutes.toFixed(2)} min |\`,
-                  \`| Budget consumed | \${r.consumedMinutes.toFixed(2)} min (\${(r.consumedFraction*100).toFixed(1)}%) |\`,
-                  \`| Budget remaining | \${r.remainingMinutes.toFixed(2)} min (\${pct}%) |\`,
-                  \`| Gate status | \${emoji} \${r.gateStatus.toUpperCase()} |\`,
-                  '',
-                  r.gateReason,
-                  '',
-                ].join('\n');
-                require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary + '\n');
-              });
-            " --input-type=module 2>/dev/null || echo "Error-budget evaluation skipped (metrics unavailable)."
-          else
-            echo "## Error-budget status" >> "$GITHUB_STEP_SUMMARY"
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "⚠️ No error-budget metrics file found at \`release-evidence/error-budget-metrics.json\`." >> "$GITHUB_STEP_SUMMARY"
-            echo "Add metrics before the next release for automated budget gating." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          mkdir -p artifacts
+          npm audit --omit=dev --json > artifacts/npm-audit.json || true
+          npm run vex:gate
+      - run: npm run sbom
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: lafiya-web-release-sbom-vex
+          path: |
+            artifacts/lafiya-web.sbom.cdx.json
+            artifacts/lafiya-web.vex.openvex.json
       # Verify the signed SLSA build provenance for the artefact before any
       # promotion. A missing or mismatched attestation fails the gate.
       - name: Verify build provenance
