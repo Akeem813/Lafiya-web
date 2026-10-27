@@ -50,6 +50,7 @@ jobs:
       - run: supabase db reset
       - run: npm run db:drift
       - run: npm run db:audit-rls
+      - run: npm run db:deletion-policy
       - run: supabase stop
         if: always()
 
